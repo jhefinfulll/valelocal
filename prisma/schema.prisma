@@ -1,0 +1,354 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl", "windows"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model cartoes {
+  id                String            @id
+  codigo            String            @unique
+  qrCode            String            @unique
+  valor             Float             @default(0)
+  status            CartaoStatus      @default(DISPONIVEL)
+  dataAtivacao      DateTime?
+  dataUtilizacao    DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  franqueadoId      String
+  estabelecimentoId String?
+  usuarioId         String?
+  estabelecimentos  estabelecimentos? @relation(fields: [estabelecimentoId], references: [id])
+  franqueados       franqueados       @relation(fields: [franqueadoId], references: [id])
+  logs              logs[]
+  transacoes        transacoes[]
+}
+
+model comissoes {
+  id                String           @id
+  valor             Float
+  percentual        Float
+  status            ComissaoStatus   @default(PENDENTE)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime
+  franqueadoId      String
+  estabelecimentoId String
+  transacaoId       String
+  estabelecimentos  estabelecimentos @relation(fields: [estabelecimentoId], references: [id])
+  franqueados       franqueados      @relation(fields: [franqueadoId], references: [id])
+  transacoes        transacoes       @relation(fields: [transacaoId], references: [id])
+  logs              logs[]
+}
+
+model configuracoes {
+  id        String     @id
+  chave     String     @unique
+  valor     String
+  descricao String?
+  tipo      ConfigTipo @default(TEXTO)
+  updatedAt DateTime
+}
+
+model configuracoes_sistema {
+  id    String @id @default(cuid())
+  chave String @unique
+  valor String
+  tipo  String
+  
+  @@map("configuracoes_sistema")
+}
+
+model cobrancas {
+  id                String         @id @default(cuid())
+  estabelecimentoId String
+  franqueadoId      String
+  asaasChargeId     String?        @unique
+  valor             Decimal        @db.Decimal(10,2)
+  status            CobrancaStatus @default(PENDING)
+  tipo              TipoCobranca
+  vencimento        DateTime
+  urlPagamento      String?
+  pixQrCode         String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  paidAt            DateTime?
+  
+  estabelecimento   estabelecimentos @relation(fields: [estabelecimentoId], references: [id])
+  franqueado        franqueados      @relation(fields: [franqueadoId], references: [id])
+  
+  @@map("cobrancas")
+}
+
+model displays {
+  id                String            @id
+  tipo              DisplayTipo
+  status            DisplayStatus     @default(DISPONIVEL)
+  dataInstalacao    DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  franqueadoId      String
+  estabelecimentoId String?
+  estabelecimentos  estabelecimentos? @relation(fields: [estabelecimentoId], references: [id])
+  franqueados       franqueados       @relation(fields: [franqueadoId], references: [id])
+  logs              logs[]
+}
+
+model estabelecimento_coords {
+  id                String           @id
+  lat               Float
+  lng               Float
+  estabelecimentoId String           @unique
+  estabelecimentos  estabelecimentos @relation(fields: [estabelecimentoId], references: [id], onDelete: Cascade)
+}
+
+model estabelecimentos {
+  id                     String                  @id
+  name                   String
+  cnpj                   String                  @unique
+  email                  String                  @unique
+  phone                  String
+  address                String
+  category               String
+  status                 EstabelecimentoStatus   @default(ATIVO)
+  ativadoEm              DateTime?
+  logo                   String?
+  asaasId                String?                 @unique
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime
+  franqueadoId           String
+  cartoes                cartoes[]
+  comissoes              comissoes[]
+  cobrancas              cobrancas[]
+  displays               displays[]
+  estabelecimento_coords estabelecimento_coords?
+  franqueados            franqueados             @relation(fields: [franqueadoId], references: [id])
+  logs                   logs[]
+  solicitacoes_cartao    solicitacoes_cartao[]
+  transacoes             transacoes[]
+  users                  users[]
+}
+
+model franqueadoras {
+  id          String        @id
+  name        String
+  cnpj        String        @unique
+  email       String        @unique
+  phone       String
+  address     String
+  logo        String?
+  status      Status        @default(ATIVO)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  franqueados franqueados[]
+  logs        logs[]
+  users       users[]
+}
+
+model franqueados {
+  id                  String                @id
+  name                String
+  cnpj                String                @unique
+  email               String                @unique
+  phone               String
+  address             String
+  region              String
+  comissionRate       Float                 @default(15.0)
+  status              Status                @default(ATIVO)
+  asaasCustomerId     String?               @unique
+  logo                String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  franqueadoraId      String
+  cartoes             cartoes[]
+  comissoes           comissoes[]
+  cobrancas           cobrancas[]
+  displays            displays[]
+  estabelecimentos    estabelecimentos[]
+  franqueadoras       franqueadoras         @relation(fields: [franqueadoraId], references: [id])
+  logs                logs[]
+  solicitacoes_cartao solicitacoes_cartao[]
+  users               users[]
+}
+
+model logs {
+  id                  String               @id
+  acao                String
+  entidade            String
+  entidadeId          String
+  dadosAnteriores     Json?
+  dadosNovos          Json?
+  ip                  String
+  userAgent           String
+  createdAt           DateTime             @default(now())
+  userId              String?
+  franqueadoraId      String?
+  franqueadoId        String?
+  estabelecimentoId   String?
+  cartaoId            String?
+  transacaoId         String?
+  comissaoId          String?
+  solicitacaoId       String?
+  displayId           String?
+  cartoes             cartoes?             @relation(fields: [cartaoId], references: [id])
+  comissoes           comissoes?           @relation(fields: [comissaoId], references: [id])
+  displays            displays?            @relation(fields: [displayId], references: [id])
+  estabelecimentos    estabelecimentos?    @relation(fields: [estabelecimentoId], references: [id])
+  franqueados         franqueados?         @relation(fields: [franqueadoId], references: [id])
+  franqueadoras       franqueadoras?       @relation(fields: [franqueadoraId], references: [id])
+  solicitacoes_cartao solicitacoes_cartao? @relation(fields: [solicitacaoId], references: [id])
+  transacoes          transacoes?          @relation(fields: [transacaoId], references: [id])
+  users               users?               @relation(fields: [userId], references: [id])
+}
+
+model refresh_tokens {
+  id        String   @id
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  users     users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model solicitacoes_cartao {
+  id                String            @id
+  quantidade        Int
+  status            SolicitacaoStatus @default(PENDENTE)
+  observacoes       String?
+  dataAprovacao     DateTime?
+  dataEnvio         DateTime?
+  dataEntrega       DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  estabelecimentoId String
+  franqueadoId      String
+  logs              logs[]
+  estabelecimentos  estabelecimentos  @relation(fields: [estabelecimentoId], references: [id])
+  franqueados       franqueados       @relation(fields: [franqueadoId], references: [id])
+}
+
+model transacoes {
+  id                String           @id
+  tipo              TransacaoTipo
+  valor             Float
+  status            TransacaoStatus  @default(PENDENTE)
+  usuarioNome       String?
+  usuarioTelefone   String?
+  comprovante       String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime
+  cartaoId          String
+  estabelecimentoId String
+  comissoes         comissoes[]
+  logs              logs[]
+  cartoes           cartoes          @relation(fields: [cartaoId], references: [id])
+  estabelecimentos  estabelecimentos @relation(fields: [estabelecimentoId], references: [id])
+}
+
+model users {
+  id                String            @id
+  name              String
+  email             String            @unique
+  password          String
+  type              UserType
+  status            Status            @default(ATIVO)
+  lastLogin         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  franqueadoraId    String?
+  franqueadoId      String?
+  estabelecimentoId String?
+  logs              logs[]
+  refresh_tokens    refresh_tokens[]
+  estabelecimentos  estabelecimentos? @relation(fields: [estabelecimentoId], references: [id])
+  franqueados       franqueados?      @relation(fields: [franqueadoId], references: [id])
+  franqueadoras     franqueadoras?    @relation(fields: [franqueadoraId], references: [id])
+}
+
+enum CartaoStatus {
+  DISPONIVEL
+  ATIVO
+  UTILIZADO
+  EXPIRADO
+}
+
+enum CobrancaStatus {
+  PENDING     // Aguardando pagamento
+  PAID        // Pago
+  EXPIRED     // Vencida
+  CANCELLED   // Cancelada
+}
+
+enum ComissaoStatus {
+  PENDENTE
+  PAGA
+  CANCELADA
+}
+
+enum ConfigTipo {
+  TEXTO
+  NUMERO
+  BOOLEAN
+  JSON
+}
+
+enum DisplayStatus {
+  DISPONIVEL
+  INSTALADO
+  MANUTENCAO
+}
+
+enum DisplayTipo {
+  BALCAO
+  PAREDE
+  MESA
+}
+
+enum EstabelecimentoStatus {
+  RASCUNHO            // Sendo criado
+  PENDENTE_PAGAMENTO  // Aguardando pagamento da ativação
+  ATIVO               // Pago e funcionando
+  SUSPENSO            // Temporariamente desabilitado
+  CANCELADO           // Cancelado definitivamente
+}
+
+enum SolicitacaoStatus {
+  PENDENTE
+  APROVADA
+  NEGADA
+  ENVIADA
+  ENTREGUE
+}
+
+enum Status {
+  ATIVO
+  INATIVO
+}
+
+enum TipoCobranca {
+  ATIVACAO_ESTABELECIMENTO
+  REPOSICAO_CARTOES
+  TAXA_ESTABELECIMENTO
+}
+
+enum TransacaoStatus {
+  PENDENTE
+  CONCLUIDA
+  CANCELADA
+}
+
+enum TransacaoTipo {
+  RECARGA
+  UTILIZACAO
+}
+
+enum UserType {
+  FRANQUEADORA
+  FRANQUEADO
+  ESTABELECIMENTO
+  USUARIO
+}
