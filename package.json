@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "prisma generate && SKIP_ENV_VALIDATION=true next build",
-    "build:win": "prisma generate && set SKIP_ENV_VALIDATION=true&& next build",
+    "build": "prisma generate && NEXT_PHASE=phase-production-build SKIP_ENV_VALIDATION=true next build",
+    "build:win": "prisma generate && set NEXT_PHASE=phase-production-build && set SKIP_ENV_VALIDATION=true&& next build",
     "start": "next start",
     "lint": "eslint"
   },
