@@ -12,9 +12,5 @@ NEXT_PHASE = "phase-production-build"
 SKIP_ENV_VALIDATION = "true"
 NODE_ENV = "production"
 
-[providers]
-postgres = []
-
-# Build optimizations
-[build]
-buildCommand = "npm run build"
+[start]
+cmd = "npm start"
