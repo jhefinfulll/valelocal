@@ -6,43 +6,84 @@ const globalForPrisma = globalThis as unknown as {
 
 let prisma: PrismaClient
 
-// Detectar se estamos em build time (apenas durante o processo de build do Next.js)
-const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' && typeof window === 'undefined'
+// Detecção mais robusta de build time vs runtime
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' && 
+                   typeof window === 'undefined' &&
+                   process.argv.some(arg => arg.includes('build'))
+
+// Force production em produção
+const isProduction = process.env.NODE_ENV === 'production'
+
+console.log('🔧 Prisma Environment Check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  NEXT_PHASE: process.env.NEXT_PHASE,
+  isBuildTime,
+  isProduction,
+  hasWindow: typeof window !== 'undefined'
+})
 
 try {
   if (isBuildTime) {
     // Durante o build, usar um mock básico
     console.log('🔧 Prisma: Usando mock durante build time')
     prisma = {} as PrismaClient
-  } else if (process.env.NODE_ENV === 'production') {
-    // Em produção (runtime), usar Prisma real
-    console.log('🔧 Prisma: Inicializando para produção')
-    prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL
-        }
-      }
-    })
   } else {
-    // Em desenvolvimento, usar instância global
-    console.log('🔧 Prisma: Inicializando para desenvolvimento')
-    if (!globalForPrisma.prisma) {
-      globalForPrisma.prisma = new PrismaClient()
+    // Em qualquer runtime (development ou production), usar Prisma real
+    console.log('🔧 Prisma: Inicializando Prisma Client para runtime')
+    
+    if (isProduction) {
+      // Produção - sempre nova instância
+      prisma = new PrismaClient({
+        datasources: {
+          db: {
+            url: process.env.DATABASE_URL
+          }
+        },
+        log: ['error', 'warn']
+      })
+    } else {
+      // Desenvolvimento - usar instância global
+      if (!globalForPrisma.prisma) {
+        globalForPrisma.prisma = new PrismaClient({
+          log: ['query', 'error', 'warn']
+        })
+      }
+      prisma = globalForPrisma.prisma
     }
-    prisma = globalForPrisma.prisma
   }
 } catch (error) {
   console.error('❌ Erro na inicialização do Prisma:', error)
-  // Em caso de erro, tentar uma última vez com configuração básica
-  if (process.env.NODE_ENV !== 'production' || isBuildTime) {
-    console.warn('🔧 Usando mock devido ao erro')
-    prisma = {} as PrismaClient
+  
+  // Se não for build time, tentar forçar inicialização
+  if (!isBuildTime) {
+    console.log('🔧 Tentando inicialização forçada do Prisma')
+    try {
+      prisma = new PrismaClient()
+    } catch (fallbackError) {
+      console.error('❌ Falha na inicialização forçada:', fallbackError)
+      prisma = {} as PrismaClient
+    }
   } else {
-    console.log('🔧 Tentando inicialização básica do Prisma')
-    prisma = new PrismaClient()
+    prisma = {} as PrismaClient
   }
 }
+
+// Validação final
+if (typeof prisma.users === 'undefined' && !isBuildTime) {
+  console.error('❌ ERRO CRÍTICO: Prisma.users está undefined em runtime!')
+  console.log('🔧 Tentando última reinicialização...')
+  try {
+    prisma = new PrismaClient()
+  } catch (e) {
+    console.error('❌ Falha total na inicialização do Prisma')
+  }
+}
+
+console.log('🔧 Prisma Status:', {
+  hasPrisma: !!prisma,
+  hasUsers: !!prisma.users,
+  type: prisma.constructor.name
+})
 
 export default prisma
 export { prisma }
