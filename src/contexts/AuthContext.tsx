@@ -57,7 +57,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsLoading(true)
       
-      const response = await apiClient.post<LoginResponse['data']>('/api/auth/login', credentials)
+      const response = await apiClient.post<LoginResponse['data']>('/auth/login', credentials)
       
       if (response.success && response.data) {
         const { token: newToken, user: userData } = response.data
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       if (!token) return
       
-      const response = await apiClient.get<User>('/api/auth/me')
+      const response = await apiClient.get<User>('/auth/me')
       
       if (response.success && response.data) {
         setUser(response.data)
