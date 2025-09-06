@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { getAuthenticatedUser } from '@/lib/auth'
-
-const prisma = new PrismaClient()
 
 // GET - Buscar informações do usuário do estabelecimento
 export async function GET(

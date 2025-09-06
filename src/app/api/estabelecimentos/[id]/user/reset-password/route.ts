@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { getAuthenticatedUser } from '@/lib/auth'
-
-const prisma = new PrismaClient()
 
 // POST - Reset da senha do usuário do estabelecimento (gera senha temporária)
 export async function POST(

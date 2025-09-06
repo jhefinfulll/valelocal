@@ -1,0 +1,20 @@
+[phases.setup]
+nixPkgs = ["nodejs_18", "npm-9_x", "openssl"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npx prisma generate", "npm run build"]
+
+[variables]
+NEXT_PHASE = "phase-production-build"
+SKIP_ENV_VALIDATION = "true"
+NODE_ENV = "production"
+
+[providers]
+postgres = []
+
+# Build optimizations
+[build]
+buildCommand = "npm run build"
